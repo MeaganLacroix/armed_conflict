@@ -1,0 +1,63 @@
+---
+title: "Week 2 in-class assignment"
+author: "Meagan Lacroix"
+date: "2024-09-16"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(here)
+here()
+```
+```{r}
+rawdat <- read.csv(here("original", "maternalmortality.csv"), header = TRUE)
+```
+
+```{r}
+library(dplyr)
+subset <- rawdat %>%
+  select(Country.Name, X2000:X2019)
+```
+```{r}
+
+library(tidyr)
+dat_long <- subset %>%
+  pivot_longer(!Country.Name, names_to = "year", values_to = "MatMor")
+```
+
+```{r}
+write.csv(dat_long, here("data", "dat_long.csv"), row.names = FALSE)
+```
+
+```{r}
+#install.packages("usethis")
+library(usethis)
+
+usethis::use_git_config(user.name = "MeaganLacroix", user.email = "meaganlacroix@alumni.trentu.ca")
+
+usethis::git_sitrep()
+```
+
+```{r}
+usethis::create_github_token()
+```
+```{r}
+gitcreds::gitcreds_set()
+```
+
+```{r}
+usethis::use_git()
+
+```
+```{r}
+usethis::create_github_token()
+```
+
+```{r}
+usethis::use_github()
+```
+
