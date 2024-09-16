@@ -61,3 +61,8 @@ usethis::create_github_token()
 usethis::use_github()
 ```
 
+```{r}
+dat_long$year <- gsub("^X", "", dat_long$year)
+```
+
+
