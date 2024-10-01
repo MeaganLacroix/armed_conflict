@@ -26,6 +26,9 @@ finaldata <- finaldata %>%
          earthquake = replace_na(earthquake, 0),
          totdeath = replace_na(totdeath, 0))
 
+finaldata <- finaldata %>%
+  select(-Country.Name)
+
 write.csv(finaldata, file = here("Data", "finaldata.csv"), row.names = FALSE)
 
 
