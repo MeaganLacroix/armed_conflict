@@ -1,0 +1,71 @@
+---
+title: "Table 1 Armed Conflict"
+author: "Meagan Lacroix"
+format: pdf
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(knitr)
+library(tidyverse)
+library(dplyr)
+library(here)
+library(texreg)
+library(table1)
+library(kableExtra)
+```
+
+```{r}
+finaldata<- read.csv(here("data", "finaldata.csv"), header = TRUE)
+
+```
+
+### The data will be stratified by "ever conflict" (the country experienced an armed conflict at any point in the study period) and "never conflict" (the country never experienced an armed conflict during the study period)
+
+```{r}
+table1_data <- finaldata %>%
+  group_by(country_name) %>%
+  mutate("Armed conflict" = ifelse(any(armconf1 == 1), "Yes", "No"),
+         "Drought" = ifelse(any(drought == 1), "Yes", "No"),
+         "Earthquake"= ifelse(any(earthquake == 1), "Yes", "No"),
+         "OECD country" = ifelse(any(OECD == 1), "Yes", "No"),
+         "OECD country 2023" = ifelse(any(OECD2023 == 1), "Yes", "No")) %>%
+  rename("GDP per capita (USD)" = gdp1000, "Population density" = popdens, "Urban residence" = urban, "Age dependency ratio" = agedep, "Male education" = male_edu, "Mean annual temperature" = temp, "Mean annual rainfall" = rainfall1000, "Total armed conflict deaths" = totdeath ) %>%
+  ungroup()
+  
+```
+
+### Creating a summary for each country
+
+```{r, warning=FALSE}
+table1_summary <- table1_data %>%
+  group_by(country_name) %>%
+  summarise(
+    across(where(is.numeric), mean, na.rm = TRUE), 
+    across(where(is.character), first)  
+  )
+```
+
+```{r}
+
+
+my_table1 <- table1(~ `Total armed conflict deaths` + `OECD country 2023` + `GDP per capita (USD)` + 
+                    `Population density` + `Urban residence` + `Age dependency ratio` + 
+                    `Male education` + `Mean annual temperature` + `Mean annual rainfall` + Drought + Earthquake | 
+                    `Armed conflict`, 
+                    data = table1_summary, 
+                    render.continuous = c(. = "Median [Min, Max]"),
+                    overall = "Total",
+                    caption = "Characteristics of Countries With and Without an Armed Conflict Between 2000-2020")
+
+
+
+t1kable(my_table1) %>%
+  add_header_above(c(" " = 1, "Armed Conflict" = 2, " " = 1))
+
+
+```

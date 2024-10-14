@@ -1,0 +1,58 @@
+---
+title: "Figure_1_Armed_Conflict"
+author: "Meagan Lacroix"
+format: pdf
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(here)
+```
+
+```{r}
+finaldata <- read.csv(here("data", "finaldata.csv"), header = TRUE)
+```
+
+```{r}
+fig1data <- finaldata %>%
+  select(country_name, ISO, year, Mor_mat) %>%
+  filter(year < 2018) %>%
+  arrange(ISO, year) %>%
+  group_by(ISO) %>%
+  mutate(diffmatmor = Mor_mat - Mor_mat[1L])
+```
+
+```{r}
+countries_to_filter <- fig1data %>%
+  filter(year == 2017 & diffmatmor < 1) %>%
+  pull(ISO)
+
+filtered_data <- fig1data %>%
+  filter(!ISO %in% countries_to_filter & !is.na(diffmatmor))
+  
+```
+
+```{r}
+library(pals)
+
+glasbey_colors <- glasbey(n = length(unique(filtered_data$country_name)))
+
+fig1 <- filtered_data %>%
+  ggplot(aes(x= year, y = Mor_mat, group = ISO)) +
+  geom_line(aes(color = country_name), alpha = 1, linewidth = 1) +
+  xlim(c(2000,2017)) +
+  scale_y_continuous(trans='log10') + 
+  labs(y = "Maternal mortality (log 10 scale)", x = "Year", color = "Country", title = "Trend in maternal mortality for countries that had an increase from 2000 to 2017") + 
+  theme_bw(base_size = 12) +
+  scale_color_manual(values = glasbey_colors)
+```
+
+```{r}
+ggsave(fig1, file = here("Tables_and_Figures", "fig1.png"), width = 8, height = 5)
+```

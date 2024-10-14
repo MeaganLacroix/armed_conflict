@@ -1,0 +1,311 @@
+---
+title: "Exploratory Data Analysis"
+author: "Meagan Lacroix"
+format: pdf
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#| message = FALSE
+library(here)
+library(dplyr)
+library(arrow)
+library(janitor)
+library(knitr)
+library(lubridate)
+library(mice)
+library(modelsummary)
+library(naniar)
+library(tidyverse)
+```
+
+### Read in the merged data
+
+```{r}
+#| warning: false
+eda_data <- read.csv(here("data", "finaldata.csv"), header = TRUE)
+```
+
+### Check names, head/tail
+
+```{r}
+names(eda_data)
+head(eda_data)
+tail(eda_data)
+```
+
+### Creating more consistent variable names
+
+```{r}
+eda_data <- eda_data %>%
+  clean_names()
+```
+
+### Changing OECD, OECD2023, armconf1, drought, and earthquate to a factor
+
+```{r}
+eda_data <- eda_data %>%
+  mutate(across(c(oecd, oecd2023, armconf1, drought, earthquake), as.factor))
+```
+
+### Summarize the variables. There is a large amount of missing data for maternal mortality. This will be investigated further
+
+```{r}
+eda_data %>% summary()
+```
+
+### Checking the names of the character variables. There are 186 countries and 17 regions
+
+```{r}
+unique(eda_data$country_name)
+unique(eda_data$iso)
+unique(eda_data$region)
+```
+
+### Creating histograms of the numeric variables. Total deaths is difficult to visualize because there is a large number of 0-1 deaths and a very small frequency of larger \# deaths. This will be investigated further.
+
+```{r}
+numeric_vars <- eda_data %>%
+  select(where(is.numeric)) %>%  
+  names() 
+
+for (var in numeric_vars) {
+  p <- ggplot(eda_data, aes(x = !!sym(var))) +  # Dynamically assign variable
+    geom_histogram(binwidth = 1, fill = "blue") + 
+    xlab(var) +  # Set x-axis label to the variable name
+    theme_minimal()
+  
+  print(p)  
+}
+```
+
+### 2730 (73%) rows of data had 0 battle-related deaths in the study time-frame.
+
+```{r}
+
+totdeath_counts <- eda_data %>%
+  group_by(totdeath) %>%  
+  summarize(count = n())  
+
+print(totdeath_counts)
+
+```
+
+### Summary of deaths by Country.
+
+### - Syria had the largest number of battle-related deaths
+
+### - Sierra Leone had the most maternal, infant, and under 5 deaths
+
+### - Pakistan had the most neonatal deaths
+
+### - Andora, Dominica, and Marshall Islands had no maternal death data
+
+### - Puerto Rico had no infant, neonatal, or under5 data. We may wish to exclude Puerto Rico from subsequent analyses.
+
+```{r}
+# Total deaths table with NA count by country
+eda_data %>%
+  group_by(country_name) %>%
+  summarise(
+    total_deaths = sum(totdeath, na.rm = TRUE),
+    total_deaths_NA = sum(is.na(totdeath))
+  ) %>%
+  arrange(desc(total_deaths))
+
+# Maternal deaths table with NA count by country
+eda_data %>%
+  group_by(country_name) %>%
+  summarise(
+    maternal_deaths = sum(mor_mat, na.rm = TRUE),
+    maternal_deaths_NA = sum(is.na(mor_mat))
+  ) %>%
+  arrange(desc(maternal_deaths))
+
+# Infant deaths table with NA count by country
+eda_data %>%
+  group_by(country_name) %>%
+  summarise(
+    infant_deaths = sum(mor_inf, na.rm = TRUE),
+    infant_deaths_NA = sum(is.na(mor_inf))
+  ) %>%
+  arrange(desc(infant_deaths))
+
+# Neonatal deaths table with NA count by country
+eda_data %>%
+  group_by(country_name) %>%
+  summarise(
+    neonatal_deaths = sum(mor_neonat, na.rm = TRUE),
+    neonatal_deaths_NA = sum(is.na(mor_neonat))
+  ) %>%
+  arrange(desc(neonatal_deaths))
+
+# Under-5 deaths table with NA count by country
+eda_data %>%
+  group_by(country_name) %>%
+  summarise(
+    under5_deaths = sum(mor_under5, na.rm = TRUE),
+    under5_deaths_NA = sum(is.na(mor_under5))
+  ) %>%
+  arrange(desc(under5_deaths))
+```
+
+### Summary of deaths by year
+
+### - The most battle-related deaths occurred in 2015
+
+### - The most maternal, infant, neonatal, and under 5 deaths occurred in 2000
+
+### - There is no maternal death data in 2018/2019
+
+```{r}
+# Total deaths by year with NA count
+eda_data %>%
+  group_by(year) %>%
+  summarise(
+    total_deaths = sum(totdeath, na.rm = TRUE),
+    total_deaths_NA = sum(is.na(totdeath))
+  ) %>%
+  arrange(desc(total_deaths))
+
+# Maternal deaths by year with NA count
+eda_data %>%
+  group_by(year) %>%
+  summarise(
+    maternal_deaths = sum(mor_mat, na.rm = TRUE),
+    maternal_deaths_NA = sum(is.na(mor_mat))
+  ) %>%
+  arrange(desc(maternal_deaths))
+
+# Infant deaths by year with NA count
+eda_data %>%
+  group_by(year) %>%
+  summarise(
+    infant_deaths = sum(mor_inf, na.rm = TRUE),
+    infant_deaths_NA = sum(is.na(mor_inf))
+  ) %>%
+  arrange(desc(infant_deaths))
+
+# Neonatal deaths by year with NA count
+eda_data %>%
+  group_by(year) %>%
+  summarise(
+    neonatal_deaths = sum(mor_neonat, na.rm = TRUE),
+    neonatal_deaths_NA = sum(is.na(mor_neonat))
+  ) %>%
+  arrange(desc(neonatal_deaths))
+
+# Under-5 deaths by year with NA count
+eda_data %>%
+  group_by(year) %>%
+  summarise(
+    under5_deaths = sum(mor_under5, na.rm = TRUE),
+    under5_deaths_NA = sum(is.na(mor_under5))
+  ) %>%
+  arrange(desc(under5_deaths))
+
+```
+
+### Visualizing the amount of missing data across all variables. There is a high level of missingness for maternal mortality (11% missing). All other variables have less than 5% missing data.
+
+```{r}
+vis_miss(eda_data)
+```
+
+### Further visualizing the missingness by year. 2018/2019 has the most missing data for maternal mortality.
+
+```{r}
+gg_miss_var(eda_data, facet = year)
+
+```
+
+### Checking the correlations of the numeric variables
+
+```{r}
+numeric_data <- eda_data[, sapply(eda_data, is.numeric)]
+
+numeric_data <- numeric_data %>%
+  select(-year)
+
+cor(numeric_data, use = "complete.obs")
+```
+
+### Generating boxplots to show the relationship between the mortality variables and the binary variables.
+
+-   OECD countries have far fewer battle-related deaths as well as maternal, neonatal, infant, and under 5 deaths
+
+-   Median death count for all mortality variables is higher when there is an armed conflict
+
+-   Median death count for all mortality variables is only slightly higher when there is an earthquake
+
+-   Median death count for all mortality variables is higher when there is a drought
+
+```{r}
+
+generate_boxplots <- function(data, binary_vars) {
+  # Reshape the data to long format for the death variables
+  data_long <- data %>%
+    pivot_longer(cols = c(mor_inf, mor_mat, mor_under5, mor_neonat, totdeath),
+                 names_to = "death_type", values_to = "death_value")
+
+  # Loop through each binary variable
+  for (binary_var in binary_vars) {
+    # Create boxplot for the current binary variable
+    p <- ggplot(data_long, aes_string(x = binary_var, y = "death_value"))+
+      geom_boxplot() +
+      facet_wrap(~ death_type, scales = "free") +
+      labs(x = paste(binary_var, "(0 = No, 1 = Yes)"), y = "Death Count",
+           title = paste("Boxplots of Death Variables by", binary_var)) +
+      theme_minimal()
+    
+    # Print the plot
+    print(p)
+  }
+}
+
+
+binary_variables <- c("oecd", "oecd2023", "armconf1", "earthquake", "drought")   
+
+generate_boxplots(eda_data, binary_variables)
+```
+
+### Creating scatterplots to visualize the relationship between the mortality variables and the other continuous variables.
+
+-   There is a negative relationship between all mortality variables and population density, urban residence, and male education
+
+-   There is a positive relationship between the mortality variables and age dependency and temperature
+
+-   The relationship between the mortality variables and rainfall is less clear and warrants further exploration
+
+```{r}
+generate_scatterplots <- function(data, continuous_vars) {
+  # Reshape the data to long format for the death variables
+  data_long <- data %>%
+    pivot_longer(cols = c(mor_inf, mor_mat, mor_under5, mor_neonat, totdeath),
+                 names_to = "death_type", values_to = "death_value")
+
+  # Loop through each binary variable
+  for (continuous_vars in continuous_vars) {
+    # Create boxplot for the current binary variable
+    p <- ggplot(data_long, aes_string(x = continuous_vars, y = "death_value"))+
+      geom_point(alpha=.5) +
+      geom_smooth(method = "lm", se = FALSE, color = "blue") +
+      facet_wrap(~ death_type, scales = "free") +
+      labs(x = paste(continuous_vars), y = "Death Count",
+           title = paste("Scatterplot of Mortality Variables by", continuous_vars)) +
+      theme_minimal()
+    
+    # Print the plot
+    print(p)
+  }
+}
+
+
+continuous_vars <- c("popdens", "urban", "agedep", "male_edu", "temp", "rainfall1000")   
+
+generate_scatterplots(eda_data, continuous_vars)
+```
