@@ -1,0 +1,61 @@
+---
+title: "Regression models"
+author: "Meagan Lacroix"
+date: "2024-11-03"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data <- read.csv(here("data", "finaldata.csv"), header = TRUE)
+```
+
+```{r}
+data <- data %>%
+  mutate(log_gdp = log(gdp1000))
+```
+
+```{r}
+library(plm)
+preds <- as.formula(" ~ armconf1 + log_gdp + OECD + popdens + urban + 
+                  agedep + male_edu + temp + rainfall1000 + earthquake + drought")
+
+matmormod <- plm(update.formula(preds, Mor_mat ~ .), index = c("ISO", "year"),
+              effect = "twoways",
+              model = "within",
+              data = data) 
+un5mormod <- plm(update.formula(preds, Mor_under5 ~ .), index = c("ISO", "year"),
+              effect = "twoways",
+              model = "within",
+              data = data) 
+infmormod <- plm(update.formula(preds, Mor_inf ~ .), index = c("ISO", "year"),
+              effect = "twoways",
+              model = "within",
+              data = data) 
+neomormod <- plm(update.formula(preds, Mor_neonat ~ .), index = c("ISO", "year"),
+              effect = "twoways",
+              model = "within",
+              data = data) 
+
+```
+
+```{r}
+library(stargazer)
+
+stargazer(matmormod, un5mormod, infmormod, neomormod,
+          type = "html",  
+          out = "Table2.html",  
+          title = "Table 2: Comparative Model Summary",
+          column.labels = c("Maternal mortality ratio<br>per 100,000 live births", "Under 5 mortality rate<br>per 1,000 live births", "Infant mortality rate<br>per 1,000 live births", "Neonataal mortality rate<br>per 1,000 live births"),
+          dep.var.labels.include = FALSE,
+          dep.var.caption = "",
+          covariate.labels = c("Armed Conflict", "Log transformed GDP", "OECD", "Population density",
+                               "Urban residence", "Age dependency ratio", "Male education", "Temperature",
+                               "Rainfall", "Earthquake", "Drought"),
+          align = TRUE,  
+          single.row = TRUE)
+```
+
