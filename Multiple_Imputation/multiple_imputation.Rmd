@@ -1,0 +1,122 @@
+---
+title: "Multiple Imputation"
+author: "Meagan Lacroix"
+date: "2024-11-04"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+finaldata <- read.csv(here("data", "finaldata.csv"), header = TRUE)
+```
+
+```{r}
+finaldata <- finaldata %>%
+  mutate(log_gdp = log(gdp1000))
+```
+
+```{r}
+midata <- finaldata |>
+  mutate(ISOnum = as.numeric(as.factor(finaldata$ISO))) |>
+  select(-country_name, -ISO)
+```
+
+```{r}
+mice0  <- mice(midata, seed = 100, m = 5, maxit = 0, print = F)
+```
+```{r}
+meth <- mice0$method
+meth[c("urban", "male_edu", "temp", "rainfall1000", "Mor_mat", "Mor_inf", "Mor_neonat", "Mor_under5", "log_gdp", "popdens")] <- "2l.lmer"
+
+pred <- mice0$predictorMatrix
+pred[c("urban", "male_edu", "temp", "rainfall1000", "Mor_mat", "Mor_inf", "Mor_neonat", "Mor_under5", "log_gdp", "popdens"), "ISOnum"] <- -2
+```
+
+```{r}
+mice.multi.out  <- mice(midata, seed = 100, m = 10, maxit = 20,
+                        method = meth,
+                        predictorMatrix = pred)
+```
+
+```{r}
+##Fitted MI regression models
+
+fitMor_mat <- with(mice.multi.out, lm(Mor_mat ~ -1 + armconf1 + log_gdp + OECD + popdens + urban +
+              agedep + male_edu + temp + rainfall1000 + earthquake + drought +
+              as.factor(ISOnum) + as.factor(year)))
+fitMor_under5 <- with(mice.multi.out, lm(Mor_under5 ~ -1 + armconf1 + log_gdp + OECD + popdens + urban +
+              agedep + male_edu + temp + rainfall1000 + earthquake + drought +
+              as.factor(ISOnum) + as.factor(year)))
+fitMore_inf <- with(mice.multi.out, lm(Mor_inf ~ -1 + armconf1 + log_gdp + OECD + popdens + urban +
+              agedep + male_edu + temp + rainfall1000 + earthquake + drought +
+              as.factor(ISOnum) + as.factor(year)))
+fitMore_neonat <- with(mice.multi.out, lm(Mor_neonat ~ -1 + armconf1 + log_gdp + OECD + popdens + urban 
+              + agedep + male_edu + temp + rainfall1000 + earthquake + drought +
+              as.factor(ISOnum) + as.factor(year)))
+```
+
+
+```{r}
+##Pooling the MI models
+
+pooled_Mor_mat <- pool(fitMor_mat)
+pooled_Mor_under5 <- pool(fitMor_under5)
+pooled_Mor_inf <- pool(fitMore_inf)
+pooled_Mor_neonat <- pool(fitMore_neonat)
+```
+
+```{r}
+summary(pooled_Mor_mat)
+summary(pooled_Mor_under5)
+summary(pooled_Mor_inf)
+summary(pooled_Mor_neonat)
+```
+```{r}
+##CC regression
+
+preds <- as.formula(" ~ -1 + armconf1 + log_gdp + OECD + popdens + urban + 
+                  agedep + male_edu + temp + rainfall1000 + earthquake + drought + as.factor(ISOnum) +                   as.factor(year)")
+
+
+matmormod <- lm(update.formula(preds, Mor_mat ~ .), 
+              data = midata) 
+
+un5mormod <- lm(update.formula(preds, Mor_under5 ~ .), 
+              data = midata) 
+
+infmormod <- lm(update.formula(preds, Mor_inf ~ .), 
+              data = midata) 
+
+neomormod <- lm(update.formula(preds, Mor_neonat ~ .), 
+              data = midata) 
+
+```
+
+
+```{r}
+library(texreg)
+
+tosave <- list(matmormod, pooled_Mor_mat, un5mormod, pooled_Mor_under5,infmormod, pooled_Mor_inf, neomormod, pooled_Mor_neonat)
+
+keepvars <- list("armconf1" = "Armed conflict",
+                 "log_gdp" = "log(GDP)",
+                 "OECD" = "OECD",
+                 "popdens" = "Population density",
+                 "urban" = "Urban",
+                 "agedep" = "Age dependency",
+                 "male_edu" = "Male education",
+                 "temp" = "Average temperature",
+                 "rainfall" = "Average rainfall",
+                 "earthquake" = "Earthquake",
+                 "drought" = "Drought")
+screenreg(tosave, 
+       ci.force = TRUE,
+       custom.coef.map = keepvars,
+       custom.model.names = c("Mat CC", "Mat MI", "Un5 CC", "Un5 MI", "Inf CC", "Inf MI", "Neo CC",           "Neo MI"), file = "imputation_model_summary.txt")
+
+save(tosave, file = here("Multiple_imputation", "mi_output.Rdata"))
+```
+
