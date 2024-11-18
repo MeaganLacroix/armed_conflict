@@ -1,0 +1,87 @@
+---
+title: "Bootstrap"
+author: "Meagan Lacroix"
+date: "2024-11-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Compute the 95% bootstrap confidence intervals for the differences in medians of the mortality variables by armed conflict exposure
+```{r}
+library(here)
+library(dplyr)
+library(boot)
+finaldata <- read.csv(here("Data", "finaldata.csv"), header = TRUE)
+```
+
+#Maternal mortality
+#Interpretation: the median difference in maternal mortality between countries exposed and not exposed to armed conflict is 126.5 deaths per 100,000 (SE = 65.58). The bias corrected and accelerated boostrap 95%CI is 41.3 to 280.4 indicating the bootstrap median lies somewhere between these values. 
+```{r}
+data2017mat <- finaldata %>%
+  filter(year == 2017 & !is.na(Mor_mat))
+
+getmeddiffMor_mat <- function(data, indices) {
+  sample_data <- data[indices, ]
+  group_meds <- tapply(sample_data$Mor_mat, sample_data$armconf1, FUN = median)
+  meddiff <- group_meds[2] - group_meds[1]
+  return(meddiff)
+}
+
+bootoutMor_mat <- boot(data2017, statistic = getmeddiffMor_mat, strata = data2017mat$armconf1, R = 1000)
+bootoutMor_mat
+boot.ci(boot.out = bootoutMor_mat, conf = 0.95, type = c("basic", "perc", "bca"))
+```
+#Neonatal mortality
+#Interpretation: the median difference in neonatal mortality between countries exposed and not exposed to armed conflict is 11.85 deaths per 100,000 (SE = 3.27). The bias corrected and accelerated boostrap 95%CI is 4.27 to 16.95 indicating the bootstrap median lies somewhere between these values.
+```{r}
+data2017neonat <- finaldata %>%
+  filter(year == 2017 & !is.na(Mor_neonat))
+
+getmeddiffMor_neonat <- function(data, indices) {
+  sample_data <- data[indices, ]
+  group_meds <- tapply(sample_data$Mor_neonat, sample_data$armconf1, FUN = median)
+  meddiff <- group_meds[2] - group_meds[1]
+  return(meddiff)
+}
+
+bootoutMor_neonat <- boot(data2017neonat, statistic = getmeddiffMor_neonat, strata = data2017neonat$armconf1, R = 1000)
+bootoutMor_neonat
+boot.ci(boot.out = bootoutMor_neonat, conf = 0.95, type = c("basic", "perc", "bca"))
+```
+#Under 5 mortality
+#Interpretation: the median difference in under 5 mortality between countries exposed and not exposed to armed conflict is 28.9 deaths per 100,000 (SE = 9.59). The bias corrected and accelerated boostrap 95%CI is 8.93 to 45.44 indicating the bootstrap median lies somewhere between these values. 
+```{r}
+data2017under5 <- finaldata %>%
+  filter(year == 2017 & !is.na(Mor_under5))
+
+getmeddiffMor_under5 <- function(data, indices) {
+  sample_data <- data[indices, ]
+  group_meds <- tapply(sample_data$Mor_under5, sample_data$armconf1, FUN = median)
+  meddiff <- group_meds[2] - group_meds[1]
+  return(meddiff)
+}
+
+bootoutMor_under5 <- boot(data2017under5, statistic = getmeddiffMor_under5, strata = data2017under5$armconf1, R = 1000)
+bootoutMor_under5
+boot.ci(boot.out = bootoutMor_under5, conf = 0.95, type = c("basic", "perc", "bca"))
+```
+#Infant mortality
+#Interpretation: the median difference in under infant mortality between countries exposed and not exposed to armed conflict is 19.8 deaths per 100,000 (SE = 6.06). The bias corrected and accelerated boostrap 95%CI is 6.56 to 29.18 indicating the bootstrap median lies somewhere between these values. 
+```{r}
+data2017inf <- finaldata %>%
+  filter(year == 2017 & !is.na(Mor_inf))
+
+getmeddiffMor_inf <- function(data, indices) {
+  sample_data <- data[indices, ]
+  group_meds <- tapply(sample_data$Mor_inf, sample_data$armconf1, FUN = median)
+  meddiff <- group_meds[2] - group_meds[1]
+  return(meddiff)
+}
+
+bootoutMor_inf <- boot(data2017inf, statistic = getmeddiffMor_inf, strata = data2017inf$armconf1, R = 1000)
+bootoutMor_inf
+boot.ci(boot.out = bootoutMor_inf, conf = 0.95, type = c("basic", "perc", "bca"))
+```
